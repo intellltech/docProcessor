@@ -34,7 +34,7 @@
                 <h3>Document Processor</h3>
             </div>
             <div class="card-body">
-                <form id="uploadForm" action="welcome/upload_1" method="post" enctype="multipart/form-data" onsubmit="return validateForm(event);">
+                <form id="uploadForm" action="welcome/process_doc" method="post" enctype="multipart/form-data" onsubmit="return validateForm(event);">
                     <!-- File Input for Template -->
                     <div class="form-group">
                         <label for="templateFile">Document Template</label>
