@@ -2,7 +2,6 @@
 
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\TemplateProcessor;
@@ -91,7 +90,7 @@ class Welcome extends CI_Controller {
     private function process_document($templateFilePath, $data)
     {
         $extension = pathinfo($templateFilePath, PATHINFO_EXTENSION);
-        $processedFilePath = './uploads/' . "result.docx";
+        $processedFilePath = './uploads/' . "result";
 
         // Process based on file type
         switch ($extension) {
@@ -141,7 +140,7 @@ class Welcome extends CI_Controller {
     {
         try {
             $templateProcessor = new TemplateProcessor($dataPath);
-            
+
             // $templateProcessor->setMacroChars('{','}');
             // Flatten simple key-value pairs
             $simpleData = $this->flattenTopLevel($jsonData);
@@ -149,8 +148,7 @@ class Welcome extends CI_Controller {
 
             // Process array blocks (both indexed and associative arrays)
             $this->processArrayBlocks($jsonData, $templateProcessor);
-            // $templateProcessor->cloneBlock('fpl_room_amenities_list',count($jsonData['fpl_hotel_amenities_list']),true,true,$jsonData['fpl_hotel_amenities_list']);
-            // var_dump($jsonData['fpl_hotel_amenities_list']);
+
             // Save the processed document
             $templateProcessor->saveAs($outputPath);
             return true;
@@ -176,6 +174,16 @@ class Welcome extends CI_Controller {
         }
         return $flatData;
     }
+    private function flattenMultiArray($data)
+    {
+        $flatData = [];
+        foreach ($data as $key => $value) {
+            if (!is_array($value)) {
+                $flatData[$key] = $value;
+            }
+        }
+        return $flatData;
+    }
 
     /**
      * Process array blocks from JSON data and apply them to the template.
@@ -188,12 +196,19 @@ class Welcome extends CI_Controller {
     {
         foreach ($data as $key => $value) {
             if (is_array($value)) {
-                if ($this->isAssociative($value)) {
-                    // For associative arrays, pass them directly
-                    $this->processBlock($key, $value, $templateProcessor);
+                if (count($value)==0){
+                    $templateProcessor->replaceBlock($key,"");
+                }
+                if ($this->isAssociative($value) && count($value)>1) {
+                    try {
+                        $templateProcessor->cloneRowAndSetValues(array_key_first(reset($value)),array_values($value));
+                    } catch (\Exception $e) {
+                        error_log("Error in process_word_document: " . $e->getMessage());
+                        continue;
+                    }
                 } else {
                     // For indexed arrays, convert to object structure
-                    $this->processBlock($key, $this->convertIndexedArrayToObject($value), $templateProcessor);
+                    $templateProcessor->cloneBlock($key, count($this->convertIndexedArrayToObject($value)) - 1, true, false, $this->convertIndexedArrayToObject($value));
                 }
             }
         }
@@ -223,68 +238,16 @@ class Welcome extends CI_Controller {
         return array_keys($array) !== range(0, count($array) - 1);
     }
 
-    /**
-     * Process a block by cloning it and filling it with the data from the JSON.
-     * This is used for both indexed and associative array-based blocks.
-     * 
-     * @param string $blockName The name of the block to process.
-     * @param array $blockData The data to populate the block.
-     * @param TemplateProcessor $templateProcessor The template processor instance.
-     */
-    private function processBlock(string $blockName, array $blockData, TemplateProcessor $templateProcessor)
-    {
-        // Clone the block and apply the data
-        $templateProcessor->cloneBlock($blockName, count($blockData) - 1, true, false, $blockData);
-    }
 
 
-
-    
-    
     private function process_excel_document($templateFilePath, $data, $processedFilePath)
     {
-        // // Use PhpSpreadsheet to process Excel files
-        // $this->load->library('PhpSpreadsheet');
-        // $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($templateFilePath);
 
-        // // Loop through all sheets and replace placeholders
-        // foreach ($spreadsheet->getAllSheets() as $sheet) {
-        //     foreach ($sheet->getCellCollection() as $cell) {
-        //         $value = $sheet->getCell($cell)->getValue();
-        //         if (is_string($value)) {
-        //             $value = $this->replace_placeholders($value, $data);
-        //             $sheet->getCell($cell)->setValue($value);
-        //         }
-        //     }
-        // }
-
-        // // Save the processed Excel file
-        // $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
-        // $writer->save($processedFilePath);
     }
 
     private function process_pdf_document($templateFilePath, $data, $processedFilePath)
     {
-        // // Use TCPDF to process PDF files (basic implementation)
-        // $this->load->library('tcpdf');
-        // $pdf = new TCPDF();
-
-        // // Read the existing PDF
-        // $pdf->setSourceFile($templateFilePath);
-        // $tplIdx = $pdf->importPage(1);
-        // $pdf->addPage();
-        // $pdf->useTemplate($tplIdx);
-
-        // // Replace placeholders (this example assumes simple text replacement)
-        // $text = file_get_contents($templateFilePath);
-        // $text = $this->replace_placeholders($text, $data);
-
-        // // Add replaced content to PDF (for this example, we assume it’s basic text replacement)
-        // $pdf->SetFont('helvetica', '', 12);
-        // $pdf->Text(10, 10, $text);
-
-        // // Save the processed PDF
-        // $pdf->Output($processedFilePath, 'F');
+       
     }
 
     
